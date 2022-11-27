@@ -1,0 +1,13 @@
+# Build script
+__freeze__.bat
+
+# Example garbage
+testhack.py
+example.tar.xz
+testhack.tar.xz
+
+# Logs, in case I smooth brain and forget to delete them
+latest.log
+
+# Don't you dare ask.
+hi_there.txt
