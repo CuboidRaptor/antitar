@@ -3,11 +3,23 @@ __freeze__.bat
 
 # Example garbage
 testhack.py
-example.tar.xz
 testhack.tar.xz
+example.*
 
 # Logs, in case I smooth brain and forget to delete them
 latest.log
+**/logs/
 
 # Don't you dare ask.
 hi_there.txt
+
+# Build output cwap
+antitar.spec
+**/build/
+**/dist/
+
+# I made a bullshit folder for trash that I want to make sure works
+**/testarea/
+
+# python whyyyyyy
+**/__pycache__/

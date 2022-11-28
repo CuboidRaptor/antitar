@@ -2,6 +2,17 @@
 import logging # imports that I need to configure logging (so I can log other imports)
 import os
 import sys
+import datetime
+import tarfile
+import argparse
+import ntpath
+import zipfile
+import shutil
+import platform
+import patoolib
+
+from send2trash import send2trash
+from py7zr import unpack_7zarchive
 
 # please, please don't ask about this function randomly defined at the top, I know, I hate it too
 def getcfl():
@@ -35,26 +46,25 @@ def procpath(pth, slashcompat=True, dbackslash=False):
 
     return pth
 
-with open(procpath(os.path.dirname(getcfl())) + "/latest.log", "w") as f:
-    pass # literally just empty the file idgaf at this point
+try:
+    # make logs folder
+    flag = False
+    os.mkdir(procpath(os.path.dirname(getcfl())) + "/logs")
+
+except FileExistsError:
+    flag = True # add warning later once logger works
 
 logging.basicConfig( # hi Mr. Logger
     level=logging.DEBUG,
-    filename=procpath(os.path.dirname(getcfl())) + "/latest.log",
+    filename=procpath(os.path.dirname(getcfl())) + "/logs/" + datetime.datetime.now().isoformat().replace(":", "-") + ".log",
     format="#%(levelname)s:%(name)s %(message)s"
 )
-# import poo-poo that no one cares about, not even me, the programmer
-print("Starting...")
-logging.debug("Importing modules that I don't actually need /j")
-import tarfile
-import argparse
-import ntpath
-import zipfile
-import shutil
-import platform
 
-from send2trash import send2trash
-from py7zr import unpack_7zarchive
+if flag:
+    logging.warning("Logs folder exists")
+
+# actual import poo-poo that no one cares about, not even me, the programmer
+print("Starting...")
 #"""
 
 logging.debug("Defining functions and stuff what do you want from me")
@@ -65,18 +75,6 @@ class AttemptedExploitException(Exception):
 
 class UnsupportedFileTypeException(Exception):
     pass # yay
-
-def getch():
-    # shitty getch that is vaguely cross-platform
-    if platform.system() == "Windows":
-        import msvcrt
-
-        print("Press any key to continue . . . ")
-        msvcrt.getch()
-
-    else:
-        input("Press enter/return to continue . . . ") # I have no patience for linux
-        # (and not because I don't have a testing *nix OS or anything)
 
 def is_within_directory(directory, target):
     # I don't even know what this is but I mean Trellix wrote it what could go wrong
@@ -89,11 +87,14 @@ def is_within_directory(directory, target):
 def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
     # thank you TrellixVuln for realizing that I'm a dipshit
     # (CVE-2007-4559 patch)
+    global fpath
+
     for member in tar.getmembers():
         member_path = os.path.join(path, member.name)
 
         if not is_within_directory(path, member_path):
-            logging.error("Attempted CVE-2007-4559 exploit (be careful when extracting archive!!)")
+            logging.error(f"Attempted CVE-2007-4559 exploit (be careful when extracting archive!!), file \"{member.name}\"")
+
             raise AttemptedExploitException("Attempted Path Traversal in Tarfile (CVE-2007-4559)")
 
     tar.extractall(path, members, numeric_owner=numeric_owner)
@@ -111,8 +112,17 @@ logging.debug("Actually parsing args (wow!)...")
 args = p.parse_args()
 logging.info(f"args.File: {args.File}")
 
-logging.debug("Verifying file type...")
-ftypes = [".tar", ".tar.gz", ".tar.xz", ".tar.bz2", ".zip", ".7z"]
+logging.debug("Verifying file type...") # check file extension
+ftypes = [
+    ".tar",
+    ".tar.gz",
+    ".tgz",
+    ".tar.xz",
+    ".tar.bz2",
+    ".zip",
+    ".7z",
+    ".rar"
+]
 valid = False
 for item in ftypes:
     if procpath(args.File).endswith(item):
@@ -137,12 +147,17 @@ if fpath.endswith(".tar"):
 
 logging.info(f"fpath (output dir): {fpath}")
 
+# check no bullshit non-existent files
+if not os.path.exists(fname):
+    logging.error("File to extract is supposedly non-existent")
+    raise FileNotFoundError("No file to extract")
+
 try:
     logging.debug("Making output folder")
     os.mkdir(rf"{fpath}")
 
 except FileExistsError:
-    logging.warning("Overwrite detected")
+    logging.warning("Overwrite detected", exc_info=True)
     overwrite = input("Output folder exists, would you like to continue? (May overwrite data [Y/N])")[0].upper()
     if overwrite == "Y":
         # no permadelete, because i'm a stinky scared person
@@ -164,7 +179,7 @@ if fname.endswith(".tar"): # now we just handle every single fuckin' type of arc
         os.chdir(str(fpath))
         safe_extract(tar)
 
-elif fname.endswith(".tar.gz"):
+elif fname.endswith(".tar.gz") or fname.endswith(".tgz"):
     logging.info("Filetype detected: Tar.Gzip")
     with tarfile.open(fname, "r:gz") as tar:
         os.chdir(str(fpath))
@@ -193,6 +208,14 @@ elif fname.endswith(".7z"):
     shutil.register_unpack_format("7zip", [".7z"], unpack_7zarchive)
     shutil.unpack_archive(fname, fpath)
 
+elif fname.endswith(".rar"):
+    logging.info("Filetype detected: Rar")
+    patoolib.extract_archive(
+        fname,
+        outdir=fpath,
+        verbosity=-1,
+        program="rar"
+    )
+
 logging.debug("Yay finished (I hope)")
 print("Done!")
-getch()
