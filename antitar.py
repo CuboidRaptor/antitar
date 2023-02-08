@@ -137,7 +137,6 @@ if not valid:
 logging.debug("Processing i/o filenames...")
 fname = procpath(os.path.abspath(os.path.basename(args.File)))
 logging.info(f"fname (proc'd args.File): {fname}")
-#fname = r"C:\\Users\\jason\\Downloads\\antitar\\fS.7z"
 
 #print(str(fname.split(".")[0]).split("\\")[-1])
 fpath = ".".join((fname.split(".")[:-1]))
